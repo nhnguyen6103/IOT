@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DEBOUNCE_DELAY 50 // 50ms
+#define DEBOUNCE_DELAY 100 // 50ms
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -72,13 +72,13 @@ void StartTask03(void const * argument);
 
 /* USER CODE BEGIN PFP */
 float GetTemperature(void) {
-    uint32_t adcValue;
+    uint16_t value;
     float temperature;
 
     HAL_ADC_Start(&hadc1);
     if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-        adcValue = HAL_ADC_GetValue(&hadc1);
-        temperature = ((adcValue * 3.3 / 4096) - 0.76) / 0.0025 + 25.0; // Công thức từ datasheet
+        value = HAL_ADC_GetValue(&hadc1);
+        temperature = (value / 4096.0) * 3.3 * 100.0;
     }
     HAL_ADC_Stop(&hadc1);
 
@@ -95,15 +95,27 @@ void WriteTemperatureToEEPROM(float temperature) {
     HAL_I2C_Mem_Write(&hi2c1, eepromAddress, memAddress, I2C_MEMADD_SIZE_16BIT, data, sizeof(data), HAL_MAX_DELAY);
 }
 
+float ReadTemperatureFromEEPROM(void) {
+    uint8_t data[4];
+    float temperature;
+    uint32_t eepromAddress = 0xA0;
+    uint16_t memAddress = 0x0000;
+
+    if (HAL_I2C_Mem_Read(&hi2c1, eepromAddress, memAddress, I2C_MEMADD_SIZE_16BIT, data, sizeof(data), HAL_MAX_DELAY) == HAL_OK) {
+        memcpy(&temperature, data, sizeof(float));
+    } else {
+        temperature = -1;
+    }
+
+    return temperature;
+}
 
 void DisplayTemperatureOnLCD(float temperature) {
     char tempStr[16];
 
-    // Tạo chuỗi nhiệt độ
     sprintf(tempStr, "Temp: %.2f C", temperature);
 
-    // Thay vì dùng ILI9341_BLACK, ILI9341_WHITE, bạn có thể dùng giá trị màu trực tiếp
-    ILI9341_WriteString(10, 10, tempStr, Font_7x10, 0x0000, 0xFFFF);  // �?en chữ, trắng n�?n
+    ILI9341_WriteString(10, 10, tempStr, Font_7x10, 0x0000, 0xFFFF);
 }
 
 
@@ -148,6 +160,7 @@ int main(void)
   MX_ADC1_Init();
   MX_SPI1_Init();
   MX_I2C1_Init();
+  ILI9341_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -170,16 +183,16 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of Task01 */
-  osThreadDef(Task01, StartTask01, osPriorityNormal, 0, 128);
-  Task01Handle = osThreadCreate(osThread(Task01), NULL);
+//  osThreadDef(Task01, StartTask01, osPriorityNormal, 0, 128);
+//  Task01Handle = osThreadCreate(osThread(Task01), NULL);
+//
+//  /* definition and creation of Task02 */
+//  osThreadDef(Task02, StartTask02, osPriorityNormal, 0, 128);
+//  Task02Handle = osThreadCreate(osThread(Task02), NULL);
 
-  /* definition and creation of Task02 */
-  osThreadDef(Task02, StartTask02, osPriorityNormal, 0, 128);
-  Task02Handle = osThreadCreate(osThread(Task02), NULL);
-
-  /* definition and creation of Task03 */
-  osThreadDef(Task03, StartTask03, osPriorityNormal, 0, 128);
-  Task03Handle = osThreadCreate(osThread(Task03), NULL);
+//  /* definition and creation of Task03 */
+//  osThreadDef(Task03, StartTask03, osPriorityNormal, 0, 128);
+//  Task03Handle = osThreadCreate(osThread(Task03), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
@@ -380,7 +393,7 @@ static void MX_DMA_Init(void)
   HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
   /* DMA1_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
@@ -404,8 +417,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|LCD_CS_Pin
-                          |LCD_RS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_12
+                          |LCD_CS_Pin|LCD_RS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LCD_DC_GPIO_Port, LCD_DC_Pin, GPIO_PIN_RESET);
@@ -413,13 +426,13 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PA1 */
   GPIO_InitStruct.Pin = GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB0 PB1 PB2 LCD_CS_Pin
-                           LCD_RS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|LCD_CS_Pin
-                          |LCD_RS_Pin;
+  /*Configure GPIO pins : PB0 PB1 PB2 PB12
+                           LCD_CS_Pin LCD_RS_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_12
+                          |LCD_CS_Pin|LCD_RS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -452,8 +465,8 @@ void StartTask01(void const * argument)
   /* USER CODE BEGIN 5 */
 	/* Infinite loop */
     while (1) {
-        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-        osDelay(1000); // Toggle LED every 1000 ms
+        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+        osDelay(1000);
     }
   /* USER CODE END 5 */
 }
@@ -472,8 +485,16 @@ void StartTask02(void const * argument)
 
     while (1) {
         float temperature = GetTemperature();
-        WriteTemperatureToEEPROM(temperature);  // Ghi vào EEPROM
-        osDelay(5000);  // Delay 5000 ms
+        WriteTemperatureToEEPROM(temperature);
+
+        float readTemperature = ReadTemperatureFromEEPROM();
+        if (readTemperature == temperature) {
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+        } else {
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+        }
+
+        osDelay(5000);
     }
   /* USER CODE END StartTask02 */
 }
@@ -489,25 +510,69 @@ void StartTask03(void const * argument)
 {
   /* USER CODE BEGIN StartTask03 */
 	/* Infinite loop */
-    uint32_t buttonState, lastButtonState = GPIO_PIN_RESET;
-    uint32_t lastDebounceTime = 0;
+//	uint8_t buttonState, lastButtonState = GPIO_PIN_RESET;
+//	uint32_t lastDebounceTime = 0;
 
-    while (1) {
-        buttonState = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);  // Kiểm tra trạng thái nút
-        if (buttonState != lastButtonState) {
-            lastDebounceTime = HAL_GetTick();
-        }
+//    while (1) {
+//        buttonState = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);
+//        if (buttonState != lastButtonState) {
+//            lastDebounceTime = HAL_GetTick();
+//        }
+//
+//        if ((HAL_GetTick() - lastDebounceTime) > DEBOUNCE_DELAY) {
+//            if (buttonState == GPIO_PIN_SET) {
+////                float temperature = GetTemperature();
+////                DisplayTemperatureOnLCD(temperature);
+//            	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+//            }
+//        }
+//        lastButtonState = buttonState;
+//        osDelay(10);
 
-        if ((HAL_GetTick() - lastDebounceTime) > DEBOUNCE_DELAY) {
-            if (buttonState == GPIO_PIN_SET) {
-                float temperature = GetTemperature();  // �?�?c nhiệt độ
-                DisplayTemperatureOnLCD(temperature);  // Hiển thị trên LCD
-            }
-        }
 
-        lastButtonState = buttonState;
-        osDelay(10); // Kiểm tra mỗi 10ms
-    }
+
+//
+//        if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_RESET) {
+//            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+//        } else {
+//            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+//        }
+//        osDelay(10);
+//    }
+
+
+	uint8_t SW_State = GPIO_PIN_SET;
+	uint8_t SW_LastState = GPIO_PIN_SET;
+
+	while (1)
+	{
+	    SW_State = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);
+	    if (SW_State != SW_LastState)
+	    {
+	        if (SW_State == GPIO_PIN_SET)
+	        {
+	            if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET)
+	            {
+	                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, SET);
+	            }
+	            else
+	            {
+	                HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, RESET);
+	            }
+//	            float temperature = GetTemperature();
+//	            DisplayTemperatureOnLCD(temperature);
+//	        	uint32_t color = 0xFFFFFF;
+//	        	ILI9341_FillScreen(color);
+//                ILI9341_WriteString(50, 50, "HELLO", Font_7x10, 0x0000, 0xFFFF);
+
+	            osDelay(50);
+	        }
+
+	        SW_LastState = SW_State;
+	    }
+
+	    osDelay(10);
+	}
   /* USER CODE END StartTask03 */
 }
 
