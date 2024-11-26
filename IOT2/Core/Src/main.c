@@ -78,7 +78,7 @@ float GetTemperature(void) {
     HAL_ADC_Start(&hadc1);
     if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
         value = HAL_ADC_GetValue(&hadc1);
-        temperature = (value / 4096.0) * 3.3 * 100.0;
+        temperature = ((float)value / 4096.0) * 3.3 * 100.0;
     }
     HAL_ADC_Stop(&hadc1);
 
@@ -182,17 +182,17 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of Task01 */
-  osThreadDef(Task01, StartTask01, osPriorityNormal, 0, 128);
-  Task01Handle = osThreadCreate(osThread(Task01), NULL);
-
+//  /* definition and creation of Task01 */
+//  osThreadDef(Task01, StartTask01, osPriorityNormal, 0, 128);
+//  Task01Handle = osThreadCreate(osThread(Task01), NULL);
+//
   /* definition and creation of Task02 */
   osThreadDef(Task02, StartTask02, osPriorityNormal, 0, 128);
   Task02Handle = osThreadCreate(osThread(Task02), NULL);
-
-  /* definition and creation of Task03 */
-  osThreadDef(Task03, StartTask03, osPriorityNormal, 0, 128);
-  Task03Handle = osThreadCreate(osThread(Task03), NULL);
+//
+//  /* definition and creation of Task03 */
+//  osThreadDef(Task03, StartTask03, osPriorityNormal, 0, 128);
+//  Task03Handle = osThreadCreate(osThread(Task03), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
@@ -490,10 +490,10 @@ void StartTask02(void const * argument)
         float readTemperature = ReadTemperatureFromEEPROM();
         if (readTemperature == temperature) {
             HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+            osDelay(500);
         } else {
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
         }
-
         osDelay(5000);
     }
   /* USER CODE END StartTask02 */
@@ -563,7 +563,7 @@ void StartTask03(void const * argument)
 //	            DisplayTemperatureOnLCD(temperature);
 //	        	uint32_t color = 0xFFFFFF;
 //	        	ILI9341_FillScreen(color);
-//                ILI9341_WriteString(50, 50, "HELLO", Font_7x10, 0x0000, 0xFFFF);
+//              ILI9341_WriteString(50, 50, "HELLO", Font_7x10, 0x0000, 0xFFFF);
 
 	            osDelay(50);
 	        }
