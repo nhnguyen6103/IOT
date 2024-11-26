@@ -105,6 +105,7 @@ float ReadTemperatureFromEEPROM(void) {
         memcpy(&temperature, data, sizeof(float));
     } else {
         temperature = -1;
+
     }
 
     return temperature;
@@ -160,7 +161,6 @@ int main(void)
   MX_ADC1_Init();
   MX_SPI1_Init();
   MX_I2C1_Init();
-  ILI9341_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -183,16 +183,16 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of Task01 */
-//  osThreadDef(Task01, StartTask01, osPriorityNormal, 0, 128);
-//  Task01Handle = osThreadCreate(osThread(Task01), NULL);
-//
-//  /* definition and creation of Task02 */
-//  osThreadDef(Task02, StartTask02, osPriorityNormal, 0, 128);
-//  Task02Handle = osThreadCreate(osThread(Task02), NULL);
+  osThreadDef(Task01, StartTask01, osPriorityNormal, 0, 128);
+  Task01Handle = osThreadCreate(osThread(Task01), NULL);
 
-//  /* definition and creation of Task03 */
-//  osThreadDef(Task03, StartTask03, osPriorityNormal, 0, 128);
-//  Task03Handle = osThreadCreate(osThread(Task03), NULL);
+  /* definition and creation of Task02 */
+  osThreadDef(Task02, StartTask02, osPriorityNormal, 0, 128);
+  Task02Handle = osThreadCreate(osThread(Task02), NULL);
+
+  /* definition and creation of Task03 */
+  osThreadDef(Task03, StartTask03, osPriorityNormal, 0, 128);
+  Task03Handle = osThreadCreate(osThread(Task03), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
 	/* add threads, ... */
