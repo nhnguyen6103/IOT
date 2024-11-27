@@ -25,6 +25,8 @@
 #include "string.h"
 #include "stdio.h"
 #include "st7789.h"
+#include <math.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -101,13 +103,10 @@ void WriteTemperatureToEEPROM(float temperature) {
     HAL_Delay(10);
 }
 
-
-
-
 float ReadTemperatureFromEEPROM(void) {
     uint8_t data[4];
     float temperature;
-    uint32_t eepromAddress = 0xA0;  // �?ịa chỉ I2C của EEPROM
+    uint32_t eepromAddress = 0xA1;
     uint16_t memAddress = 0x0000;
 
     if (HAL_I2C_Mem_Read(&hi2c2, eepromAddress, memAddress, I2C_MEMADD_SIZE_16BIT, data, sizeof(data), HAL_MAX_DELAY) == HAL_OK) {
@@ -118,11 +117,6 @@ float ReadTemperatureFromEEPROM(void) {
 
     return temperature;
 }
-
-
-
-
-
 
 void ST7789_WriteFloat(uint16_t x, uint16_t y, float num, FontDef font, uint16_t color, uint16_t bgcolor)
 {
@@ -158,9 +152,6 @@ void ST7789_WriteFloat(uint16_t x, uint16_t y, float num, FontDef font, uint16_t
 
     ST7789_WriteString(x, y, buffer, font, color, bgcolor);
 }
-
-
-
 
 /* USER CODE END PFP */
 
@@ -589,7 +580,6 @@ void StartTask02(void const * argument)
         float temperature = GetTemperature();
         WriteTemperatureToEEPROM(temperature);
 
-
         osDelay(5000);
     }
   /* USER CODE END StartTask02 */
@@ -609,15 +599,17 @@ void StartTask03(void const * argument)
 	uint8_t SW_State = GPIO_PIN_SET;
 	uint8_t SW_LastState = GPIO_PIN_SET;
 	ST7789_Init();
-    ST7789_WriteString(50, 30,"TEAM AGIS", Font_7x10, WHITE, BLACK);
-    ST7789_WriteString(10, 50,"21200014    NGUYEN HOANG NGUYEN", Font_7x10, WHITE, BLACK);
-    ST7789_WriteString(10, 70,"21200065    TRAN ANH DUNG", Font_7x10, WHITE, BLACK);
-    ST7789_WriteString(10, 90,"21200241    NGUYEN DANG TRI", Font_7x10, WHITE, BLACK);
-    ST7789_WriteString(10, 110,"21200247    TRAN QUOC TRUNG", Font_7x10, WHITE, BLACK);
+	ST7789_WriteString(30, 40,"Press the button to update", Font_7x10, WHITE, BLACK);
+	ST7789_WriteString(60, 50,"the temperature", Font_7x10, WHITE, BLACK);
+    ST7789_WriteString(70, 90,"TEAM AGIS", Font_7x10, WHITE, BLACK);
+    ST7789_WriteString(10, 110,"21200014    NGUYEN HOANG NGUYEN", Font_7x10, WHITE, BLACK);
+    ST7789_WriteString(10, 130,"21200065    TRAN ANH DUNG", Font_7x10, WHITE, BLACK);
+    ST7789_WriteString(10, 150,"21200241    NGUYEN DANG TRI", Font_7x10, WHITE, BLACK);
+    ST7789_WriteString(10, 170,"21200247    TRAN QUOC TRUNG", Font_7x10, WHITE, BLACK);
 	    // Infinite loop to update temperature display
 	    while (1)
 	    {
-	        SW_State = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);  // Button press detection
+	        SW_State = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);
 	        if (SW_State != SW_LastState)
 	        {
 	            if (SW_State == GPIO_PIN_SET)
@@ -625,29 +617,18 @@ void StartTask03(void const * argument)
 	                if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET)
 	                {
 
-	                    ST7789_Fill(10, 10, 240, 10, BLACK);  // Fill background with black
+	                    ST7789_Fill(10, 10, 240, 10, BLACK);
 
-	                    float temperature = GetTemperature();  // Get the current temperature
-//	                    float readtemperature = ReadTemperatureFromEEPROM();
+	                    float temperature = GetTemperature();
+	                    float readTemperature = ReadTemperatureFromEEPROM();
 	                    ST7789_WriteString(10, 10,"Temperature: ", Font_7x10, WHITE, BLACK);
-	                    ST7789_WriteFloat(100, 10, temperature, Font_7x10, WHITE, BLACK);  // Display temperature
-	                    ST7789_WriteString(150, 10, "*C", Font_7x10, WHITE, BLACK);  // Celsius symbol
-
-//	                    if(readtemperature == temperature)
-//	                    {
-//	                    	ST7789_WriteString(150, 100, "YES", Font_7x10, WHITE, BLACK);  // Celsius symbol
-//	                    }
-//	                    else
-//	                    {
-//	                    	ST7789_WriteString(150, 50, "NO", Font_7x10, WHITE, BLACK);
-//	                    }
+	                    ST7789_WriteFloat(100, 10, temperature, Font_7x10, WHITE, BLACK);
+	                    ST7789_WriteString(150, 10, "*C", Font_7x10, WHITE, BLACK);
 	                }
 	                osDelay(50);
 	            }
-
 	            SW_LastState = SW_State;
 	        }
-
 	        osDelay(10);
 	    }
 
